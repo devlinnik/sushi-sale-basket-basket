@@ -287,6 +287,18 @@ if (empty($arResult['ERROR_MESSAGE']))
                 }
             }
 
+            function triggerQtyChange(input) {
+                if (!input) {
+                    return;
+                }
+
+                if (window.BX && BX.fireEvent) {
+                    BX.fireEvent(input, 'change');
+                } else {
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+
             function applyQty(input, qty, triggerChange) {
                 if (!input) {
                     return;
@@ -296,56 +308,39 @@ if (empty($arResult['ERROR_MESSAGE']))
 
                 input.value = qty;
                 input.setAttribute('value', qty);
-                input.setAttribute('data-value', qty);
 
                 var item = getBasketItem(input);
                 updateMinusState(item, qty);
 
                 if (triggerChange) {
-                    if (window.BX && BX.fireEvent) {
-                        BX.fireEvent(input, 'change');
-                    } else {
-                        input.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
+                    triggerQtyChange(input);
                 }
             }
 
             function bindBasketQuantityHandlers() {
                 document.addEventListener('click', function (e) {
                     var plusBtn = e.target.closest('[data-entity="basket-item-quantity-plus"]');
-                    if (plusBtn) {
-                        e.preventDefault();
+                    var minusBtn = e.target.closest('[data-entity="basket-item-quantity-minus"]');
+                    var controlBtn = plusBtn || minusBtn;
 
-                        var item = getBasketItem(plusBtn);
-                        var input = getQtyInput(item);
-                        if (!input || input.disabled) {
-                            return;
-                        }
-
-                        var currentQty = normalizeQty(input.value);
-                        applyQty(input, currentQty + 1, true);
+                    if (!controlBtn) {
                         return;
                     }
 
-                    var minusBtn = e.target.closest('[data-entity="basket-item-quantity-minus"]');
-                    if (minusBtn) {
-                        e.preventDefault();
+                    e.preventDefault();
+                    e.stopPropagation();
 
-                        var item = getBasketItem(minusBtn);
-                        var input = getQtyInput(item);
-                        if (!input || input.disabled) {
-                            return;
-                        }
-
-                        var currentQty = normalizeQty(input.value);
-                        if (currentQty <= 1) {
-                            applyQty(input, 1, false);
-                            return;
-                        }
-
-                        applyQty(input, currentQty - 1, true);
+                    var item = getBasketItem(controlBtn);
+                    var input = getQtyInput(item);
+                    if (!input || input.disabled) {
+                        return;
                     }
-                });
+
+                    var currentQty = normalizeQty(input.value);
+                    var nextQty = plusBtn ? currentQty + 1 : Math.max(1, currentQty - 1);
+
+                    applyQty(input, nextQty, currentQty !== nextQty);
+                }, true);
 
                 document.addEventListener('change', function (e) {
                     var input = e.target.closest('[data-entity="basket-item-quantity-field"]');
